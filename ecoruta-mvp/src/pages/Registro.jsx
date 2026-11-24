@@ -9,8 +9,6 @@ export default function Registro() {
     barrios,
     registrarUsuario,
     iniciarSesion,
-    verificarCodigo,
-    reenviarCodigo,
     salir,
     sesionActiva,
     cargandoCatalogo,
@@ -20,10 +18,8 @@ export default function Registro() {
   const [modo, setModo] = useState('iniciar');
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
-  const [emailPendiente, setEmailPendiente] = useState('');
   const [password, setPassword] = useState('');
   const [confirmacion, setConfirmacion] = useState('');
-  const [codigo, setCodigo] = useState('');
   const [ciudadId, setCiudadId] = useState('');
   const [barrioId, setBarrioId] = useState('');
   const [error, setError] = useState('');
@@ -71,14 +67,7 @@ export default function Registro() {
 
     setEnviando(true);
     try {
-      const resultado = await registrarUsuario({ nombre, email: email.trim(), password, barrioId: barrioIdElegido });
-      if (!resultado.session) {
-        setEmailPendiente(email.trim());
-        setModo('verificar');
-        setPassword('');
-        setConfirmacion('');
-        setAviso('Te enviamos un código de confirmación. Revisa también la carpeta de correo no deseado.');
-      }
+      await registrarUsuario({ nombre, email: email.trim(), password, barrioId: barrioIdElegido });
     } catch (errorRegistro) {
       setError(errorRegistro.message);
     } finally {
@@ -100,38 +89,6 @@ export default function Registro() {
     }
   };
 
-  const enviarCodigo = async (evento) => {
-    evento.preventDefault();
-    setError('');
-    setAviso('');
-    if (!/^\d{6,8}$/.test(codigo)) {
-      setError('Escribe el código numérico que recibiste por correo.');
-      return;
-    }
-    setEnviando(true);
-    try {
-      await verificarCodigo(emailPendiente, codigo);
-    } catch (errorCodigo) {
-      setError(errorCodigo.message);
-    } finally {
-      setEnviando(false);
-    }
-  };
-
-  const reenviar = async () => {
-    setError('');
-    setAviso('');
-    setEnviando(true);
-    try {
-      await reenviarCodigo(emailPendiente);
-      setAviso('Enviamos otro código. Revisa tu correo.');
-    } catch (errorReenvio) {
-      setError(errorReenvio.message);
-    } finally {
-      setEnviando(false);
-    }
-  };
-
   const catalogoNoDisponible = isCloudEnabled && !cargandoCatalogo && !errorCatalogo && ciudades.length === 0;
   const registroBloqueado = modo === 'registro' && (
     cargandoCatalogo || Boolean(errorCatalogo) || catalogoNoDisponible
@@ -147,16 +104,13 @@ export default function Registro() {
 
       <form
         className="tarjeta registro-form"
-        onSubmit={modo === 'registro' ? enviarRegistro : modo === 'verificar' ? enviarCodigo : enviarInicioSesion}
+        onSubmit={modo === 'registro' ? enviarRegistro : enviarInicioSesion}
         noValidate
       >
         <div>
           <h2 className="titulo-formulario">
-            {modo === 'registro' ? 'Crear cuenta' : modo === 'verificar' ? 'Confirma tu correo' : 'Iniciar sesión'}
+            {modo === 'registro' ? 'Crear cuenta' : 'Iniciar sesión'}
           </h2>
-          {modo === 'verificar' && (
-            <p className="texto-formulario">Ingresa el código que enviamos a {emailPendiente}.</p>
-          )}
         </div>
 
         {!isCloudEnabled && (
@@ -221,32 +175,28 @@ export default function Registro() {
           </>
         )}
 
-        {modo !== 'verificar' && (
-          <>
-            <label className="campo">
-              <span>Correo electrónico</span>
-              <input
-                type="email"
-                value={email}
-                onChange={(evento) => setEmail(evento.target.value)}
-                placeholder="tu@correo.com"
-                autoComplete="email"
-                required
-              />
-            </label>
-            <label className="campo">
-              <span>Contraseña</span>
-              <input
-                type="password"
-                value={password}
-                onChange={(evento) => setPassword(evento.target.value)}
-                autoComplete={modo === 'registro' ? 'new-password' : 'current-password'}
-                minLength={8}
-                required
-              />
-            </label>
-          </>
-        )}
+        <label className="campo">
+          <span>Correo electrónico</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(evento) => setEmail(evento.target.value)}
+            placeholder="tu@correo.com"
+            autoComplete="email"
+            required
+          />
+        </label>
+        <label className="campo">
+          <span>Contraseña</span>
+          <input
+            type="password"
+            value={password}
+            onChange={(evento) => setPassword(evento.target.value)}
+            autoComplete={modo === 'registro' ? 'new-password' : 'current-password'}
+            minLength={8}
+            required
+          />
+        </label>
 
         {modo === 'registro' && (
           <label className="campo">
@@ -262,49 +212,24 @@ export default function Registro() {
           </label>
         )}
 
-        {modo === 'verificar' && (
-          <label className="campo">
-            <span>Código de verificación</span>
-            <input
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              value={codigo}
-              onChange={(evento) => setCodigo(evento.target.value.replace(/\s/g, '').slice(0, 8))}
-              placeholder="Código del correo"
-              required
-            />
-          </label>
-        )}
-
         <button
           className="boton boton--primario boton--ancho"
           type="submit"
           disabled={enviando || !isCloudEnabled || registroBloqueado}
         >
-          {enviando ? 'Un momento…' : modo === 'registro' ? 'Crear cuenta' : modo === 'verificar' ? 'Verificar correo' : 'Iniciar sesión'}
+          {enviando ? 'Un momento…' : modo === 'registro' ? 'Crear cuenta' : 'Iniciar sesión'}
         </button>
 
-        {modo === 'verificar' ? (
-          <div className="acciones-formulario">
-            <button type="button" className="boton boton--texto" onClick={reenviar} disabled={enviando || !isCloudEnabled}>
-              Reenviar código
-            </button>
-            <button type="button" className="boton boton--texto" onClick={() => cambiarModo('iniciar')}>
-              Volver al inicio de sesión
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="boton boton--texto"
-            onClick={() => cambiarModo(modo === 'registro' ? 'iniciar' : 'registro')}
-          >
-            {modo === 'registro' ? 'Ya tengo una cuenta' : 'Crear una cuenta nueva'}
-          </button>
-        )}
+        <button
+          type="button"
+          className="boton boton--texto"
+          onClick={() => cambiarModo(modo === 'registro' ? 'iniciar' : 'registro')}
+        >
+          {modo === 'registro' ? 'Ya tengo una cuenta' : 'Crear una cuenta nueva'}
+        </button>
 
         <p className="nota-privacidad">
-          <Icono nombre="escudo" tam={14} /> Tu contraseña la gestiona Supabase Auth; EcoRuta no la guarda en su perfil.
+          <Icono nombre="escudo" tam={14} /> Supabase Auth gestiona tu contraseña; EcoRuta no la guarda en el perfil.
         </p>
       </form>
     </main>

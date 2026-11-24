@@ -13,9 +13,7 @@ import {
 import {
   cerrarSesionAuth,
   iniciarSesion as iniciarSesionAuth,
-  reenviarCodigoCorreo,
   registrarCuenta,
-  verificarCodigoCorreo,
 } from '../services/authService';
 import { isCloudEnabled, supabase } from '../config/supabaseClient';
 
@@ -141,22 +139,17 @@ export function EcoRutaProvider({ children }) {
 
   const registrarUsuario = async (datos) => {
     setErrorAuth('');
-    return registrarCuenta(datos);
+    const resultado = await registrarCuenta(datos);
+    if (!resultado.session) {
+      throw new Error('Supabase aún solicita confirmar el correo. Desactiva “Confirm email” en Authentication → Providers → Email.');
+    }
+    setSesion(resultado.session);
+    return resultado;
   };
 
   const iniciarSesion = async (email, password) => {
     setErrorAuth('');
     return iniciarSesionAuth(email, password);
-  };
-
-  const verificarCodigo = async (email, codigo) => {
-    setErrorAuth('');
-    return verificarCodigoCorreo(email, codigo);
-  };
-
-  const reenviarCodigo = async (email) => {
-    setErrorAuth('');
-    return reenviarCodigoCorreo(email);
   };
 
   const salir = async () => {
@@ -271,8 +264,6 @@ export function EcoRutaProvider({ children }) {
         errorCatalogo,
         registrarUsuario,
         iniciarSesion,
-        verificarCodigo,
-        reenviarCodigo,
         actualizarPerfil,
         salir,
         iniciarSimulacionRecorrido,

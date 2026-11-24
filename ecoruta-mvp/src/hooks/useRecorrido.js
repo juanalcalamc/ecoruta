@@ -1,4 +1,4 @@
-import { useEcoRuta } from '../context/EcoRutaContext';
+import { useEcoRuta } from '../context/useEcoRuta';
 import { RUTA } from '../data/mapaBarrio';
 import { AVANCE_POR_MODO, formatoDistancia, metrosACasa, posicionPorAvance } from '../lib/simulacion';
 

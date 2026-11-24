@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { useEcoRuta } from '../context/EcoRutaContext';
+import { useEcoRuta } from '../context/useEcoRuta';
 import Icono, { Logo } from './Icono';
+import { navegar } from '../hooks/useHashRoute';
 
 const PESTANAS = [
   { ruta: 'inicio', texto: 'Inicio', icono: 'inicio' },
@@ -11,24 +12,33 @@ const PESTANAS = [
 ];
 
 export function Encabezado() {
-  const { usuario, barrioActual, barrios, cambiarBarrio, salir } = useEcoRuta();
+  const { usuario, barrioActual, ciudadActual, salir } = useEcoRuta();
+  const cerrarSesion = async () => {
+    try {
+      await salir();
+    } catch (error) {
+      window.alert(`No se pudo cerrar sesión: ${error.message}`);
+    }
+  };
+
   return (
     <header className="encabezado">
       <Logo tam={34} />
       <div className="encabezado-texto">
         <span className="encabezado-saludo">Hola, {usuario.nombre}</span>
-        <label className="encabezado-barrio">
+        <span className="encabezado-ubicacion">
           <Icono nombre="pin" tam={14} />
-          <select value={barrioActual.id} onChange={(e) => cambiarBarrio(e.target.value)} aria-label="Cambiar barrio">
-            {barrios.map((b) => (
-              <option key={b.id} value={b.id}>{b.nombre}</option>
-            ))}
-          </select>
-        </label>
+          {barrioActual.nombre} · {ciudadActual.nombre}
+        </span>
       </div>
-      <button className="boton-icono" onClick={salir} aria-label="Cerrar sesión" title="Cerrar sesión">
-        <Icono nombre="salir" tam={20} />
-      </button>
+      <div className="encabezado-acciones">
+        <button className="boton-icono" onClick={() => navegar('configuracion')} aria-label="Configuración" title="Configuración">
+          <Icono nombre="configuracion" tam={20} />
+        </button>
+        <button className="boton-icono" onClick={cerrarSesion} aria-label="Cerrar sesión" title="Cerrar sesión">
+          <Icono nombre="salir" tam={20} />
+        </button>
+      </div>
     </header>
   );
 }

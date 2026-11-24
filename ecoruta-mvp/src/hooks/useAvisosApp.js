@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useEcoRuta } from '../context/EcoRutaContext';
+import { useEcoRuta } from '../context/useEcoRuta';
 
 const CLAVE_SISTEMA = 'ecoruta_front_notif_sistema';
 

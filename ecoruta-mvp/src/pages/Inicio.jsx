@@ -1,4 +1,4 @@
-import { useEcoRuta } from '../context/EcoRutaContext';
+import { useEcoRuta } from '../context/useEcoRuta';
 import TarjetaEstado from '../components/TarjetaEstado';
 import MapaBarrio from '../components/MapaBarrio';
 import Icono from '../components/Icono';
@@ -15,18 +15,33 @@ const MODOS = [
   { valor: 'ya_paso', texto: 'Ya pasó' },
 ];
 
-const dia = (hoy, barrio) => (barrio.dias.includes(hoy) ? `hoy pasa de ${barrio.franja}` : 'hoy no hay recolección');
+const horaLegible = (hora) => {
+  if (!hora) return '';
+  const [horasTexto, minutos] = hora.split(':');
+  const horas = Number(horasTexto);
+  const periodo = horas >= 12 ? 'p. m.' : 'a. m.';
+  return `${horas % 12 || 12}:${minutos} ${periodo}`;
+};
 
 function Calendario({ barrio }) {
+  const diasRecoleccion = barrio.dias_recoleccion || [];
+  const horarioConfigurado = diasRecoleccion.length > 0 && barrio.hora_inicio && barrio.hora_fin;
+  const franja = horarioConfigurado
+    ? `${horaLegible(barrio.hora_inicio)} - ${horaLegible(barrio.hora_fin)}`
+    : 'Horario por definir';
+  const estadoDia = horarioConfigurado
+    ? diasRecoleccion.includes(HOY) ? `hoy pasa de ${franja}` : 'hoy no hay recolección'
+    : 'horario aún no configurado para este barrio';
+
   return (
     <section className="tarjeta">
       <div className="tarjeta-titulo">
         <h3>Tu semana de recolección</h3>
-        <span className="chip">{barrio.franja}</span>
+        <span className="chip">{franja}</span>
       </div>
       <ol className="calendario">
         {DIAS.map((dia) => {
-          const ordinaria = barrio.dias.includes(dia);
+          const ordinaria = diasRecoleccion.includes(dia);
           return (
             <li key={dia} className={`dia ${ordinaria ? 'activo' : ''} ${dia === HOY ? 'hoy' : ''}`}>
               <span>{dia}</span>
@@ -36,7 +51,8 @@ function Calendario({ barrio }) {
         })}
       </ol>
       <p className="leyenda">
-        <i className="punto punto--negra" /> Día de recolección · {dia(HOY, barrio)} · {barrio.empresa}
+        {horarioConfigurado && <><i className="punto punto--negra" /> Día de recolección · </>}
+        {estadoDia}{barrio.empresa_aseo ? ` · ${barrio.empresa_aseo}` : ''}
       </p>
     </section>
   );

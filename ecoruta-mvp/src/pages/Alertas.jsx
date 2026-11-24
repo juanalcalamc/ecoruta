@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useEcoRuta } from '../context/EcoRutaContext';
+import { useEcoRuta } from '../context/useEcoRuta';
 import Icono from '../components/Icono';
 
 const OPCIONES = [

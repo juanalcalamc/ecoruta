@@ -1,41 +1,9 @@
 import { supabase, isCloudEnabled } from '../config/supabaseClient';
 
 const STORAGE_KEYS = {
-  USER: 'ecoruta_user',
   REPORTES: 'ecoruta_reportes',
   PREFS: 'ecoruta_alert_prefs',
 };
-
-// Catálogo base de barrios y horarios de demostración (Capítulo 6.5)[cite: 41, 45]
-export const BARRIOS_DATA = [
-  {
-    id: 'villa-esperanza',
-    nombre: 'Villa Esperanza',
-    empresa: 'ASEO DEMO S.A. E.S.P.',
-    dias: ['Lun', 'Mié', 'Vie'],
-    franja: '6:00 p. m. - 9:00 p. m.',
-    horaInicio: 18,
-    horaFin: 21,
-  },
-  {
-    id: 'ciudad-hayuelos',
-    nombre: 'Ciudad Hayuelos',
-    empresa: 'Ciudad Limpia Bogotá S.A. E.S.P.',
-    dias: ['Mar', 'Jue', 'Sáb'],
-    franja: '7:00 p. m. - 10:00 p. m.',
-    horaInicio: 19,
-    horaFin: 22,
-  },
-  {
-    id: 'el-recreo',
-    nombre: 'El Recreo',
-    empresa: 'Promoambiental Distrito',
-    dias: ['Lun', 'Mié', 'Vie'],
-    franja: '6:00 a. m. - 9:00 a. m.',
-    horaInicio: 6,
-    horaFin: 9,
-  },
-];
 
 // Reportes precargados para demostración (Figura 10)[cite: 46]
 const REPORTES_INICIALES = [
@@ -65,20 +33,97 @@ const REPORTES_INICIALES = [
   },
 ];
 
-// 1. Gestión de usuario local (cumple Ley 1581 de 2012: solo nombre y barrio)[cite: 27, 29]
-export function guardarPerfilLocal(nombre, barrioId) {
-  const perfil = { nombre: nombre.trim(), barrioId };
-  localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(perfil));
-  return perfil;
+function validarSupabase() {
+  if (!supabase) {
+    throw new Error('Supabase no está configurado. Revisa las variables de entorno.');
+  }
 }
 
-export function obtenerPerfilLocal() {
-  const raw = localStorage.getItem(STORAGE_KEYS.USER);
-  return raw ? JSON.parse(raw) : null;
+export async function listarCiudades() {
+  validarSupabase();
+  const { data, error } = await supabase
+    .from('ciudades')
+    .select('id,nombre')
+    .order('nombre');
+
+  if (error) throw error;
+  return data;
 }
 
-export function cerrarPerfilLocal() {
-  localStorage.removeItem(STORAGE_KEYS.USER);
+export async function listarBarrios() {
+  validarSupabase();
+  const { data, error } = await supabase
+    .from('barrios')
+    .select('id,nombre,ciudad_id,empresa_aseo,dias_recoleccion,hora_inicio,hora_fin')
+    .not('ciudad_id', 'is', null)
+    .order('nombre');
+
+  if (error) throw error;
+  return data;
+}
+
+export async function obtenerPerfilUsuario(usuarioAuth) {
+  validarSupabase();
+  const { data: perfil, error: errorPerfil } = await supabase
+    .from('perfiles')
+    .select('id,nombre,barrio_id')
+    .eq('id', usuarioAuth.id)
+    .single();
+
+  if (errorPerfil) throw errorPerfil;
+
+  const { data: barrio, error: errorBarrio } = await supabase
+    .from('barrios')
+    .select('id,nombre,ciudad_id,empresa_aseo,dias_recoleccion,hora_inicio,hora_fin')
+    .eq('id', perfil.barrio_id)
+    .single();
+
+  if (errorBarrio) throw errorBarrio;
+
+  const { data: ciudad, error: errorCiudad } = await supabase
+    .from('ciudades')
+    .select('id,nombre')
+    .eq('id', barrio.ciudad_id)
+    .single();
+
+  if (errorCiudad) throw errorCiudad;
+
+  return {
+    ...perfil,
+    email: usuarioAuth.email,
+    barrio,
+    ciudad,
+  };
+}
+
+export async function actualizarPerfilUsuario({ usuarioId, nombre, barrioId, ciudadId }) {
+  validarSupabase();
+  const { data: barrio, error: errorBarrio } = await supabase
+    .from('barrios')
+    .select('id,ciudad_id')
+    .eq('id', barrioId)
+    .single();
+
+  if (errorBarrio) throw errorBarrio;
+  if (barrio.ciudad_id !== ciudadId) {
+    throw new Error('El barrio seleccionado no pertenece a la ciudad elegida.');
+  }
+
+  const { data: actualizado, error } = await supabase
+    .from('perfiles')
+    .update({ nombre: nombre.trim(), barrio_id: barrioId, actualizado_en: new Date().toISOString() })
+    .eq('id', usuarioId)
+    .select('id')
+    .single();
+
+  if (error) throw error;
+  if (!actualizado) throw new Error('No se encontró el perfil para actualizar.');
+
+  const { data: usuarioAuth, error: errorSesion } = await supabase.auth.getUser();
+  if (errorSesion) throw errorSesion;
+  if (!usuarioAuth.user) throw new Error('La sesión expiró. Inicia sesión de nuevo.');
+
+  return obtenerPerfilUsuario(usuarioAuth.user);
 }
 
 // 2. Cálculo del estado "Saca / Espera / Ya pasó" según modo simulación[cite: 27, 42, 45]
@@ -129,7 +174,7 @@ export function calcularEstadoRecoleccion(modoHoraSimulada, cambioHorarioActivo)
   }
 }
 
-// 3. Gestión de reportes (Nube Supabase con fallback automático a localStorage)[cite: 42]
+// Gestión de reportes (Supabase con almacenamiento local para modo de demostración).
 export async function listarReportes(barrioId) {
   if (isCloudEnabled) {
     const { data, error } = await supabase
@@ -138,7 +183,8 @@ export async function listarReportes(barrioId) {
       .eq('barrio_id', barrioId)
       .order('creado_en', { ascending: false });
 
-    if (!error && data) return data;
+    if (error) throw error;
+    return data.map(adaptarReporte);
   }
 
   const raw = localStorage.getItem(STORAGE_KEYS.REPORTES);
@@ -179,7 +225,8 @@ export async function crearNuevoReporte({ barrioId, usuario, tipo, descripcion, 
       .select()
       .single();
 
-    if (!error && data) return data;
+    if (error) throw error;
+    if (data) return adaptarReporte(data);
   }
 
   const raw = localStorage.getItem(STORAGE_KEYS.REPORTES);
@@ -187,6 +234,21 @@ export async function crearNuevoReporte({ barrioId, usuario, tipo, descripcion, 
   const actualizados = [nuevo, ...actuales];
   localStorage.setItem(STORAGE_KEYS.REPORTES, JSON.stringify(actualizados));
   return nuevo;
+}
+
+function adaptarReporte(reporte) {
+  return {
+    id: reporte.id,
+    barrioId: reporte.barrio_id,
+    usuario: reporte.usuario_nombre,
+    tipo: reporte.tipo_problema,
+    descripcion: reporte.descripcion,
+    coordX: Number(reporte.coord_x),
+    coordY: Number(reporte.coord_y),
+    fotoUrl: reporte.foto_url,
+    estado: reporte.estado,
+    fecha: reporte.creado_en,
+  };
 }
 
 // Utilidad para convertir archivo <input type="file"> a Base64 para vista previa/almacenamiento[cite: 29, 46]

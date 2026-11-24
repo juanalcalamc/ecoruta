@@ -1,4 +1,4 @@
-import { useEcoRuta } from '../context/EcoRutaContext';
+import { useEcoRuta } from '../context/useEcoRuta';
 import { useRecorrido } from '../hooks/useRecorrido';
 
 // Qué luz del semáforo se enciende para cada estado del servicio

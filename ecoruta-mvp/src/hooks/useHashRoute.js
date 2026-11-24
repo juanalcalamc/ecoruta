@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 // Enrutador mínimo por hash (#/mapa). Funciona en GitHub Pages sin configurar el servidor.
-export const RUTAS = ['inicio', 'mapa', 'alertas', 'reportar', 'reportes'];
+export const RUTAS = ['inicio', 'mapa', 'alertas', 'reportar', 'reportes', 'configuracion'];
 
 const leerRuta = () => {
   const ruta = window.location.hash.replace(/^#\/?/, '');

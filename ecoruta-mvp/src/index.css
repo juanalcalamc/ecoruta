@@ -125,22 +125,18 @@ button { cursor: pointer; }
 }
 .encabezado-texto { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .encabezado-saludo { font-weight: 700; font-size: 0.95rem; }
-.encabezado-barrio {
+.encabezado-ubicacion {
   display: inline-flex;
   align-items: center;
   gap: 2px;
   color: var(--verde-600);
   font-size: 0.8rem;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.encabezado-barrio select {
-  border: 0;
-  background: none;
-  font-weight: 600;
-  color: inherit;
-  padding: 0 2px;
-  cursor: pointer;
-}
+.encabezado-acciones { display: flex; gap: 6px; }
 
 .boton-icono {
   display: grid;
@@ -295,7 +291,16 @@ button { cursor: pointer; }
   resize: vertical;
   transition: border-color 0.2s;
 }
-.campo input:focus, .campo textarea:focus { outline: none; border-color: var(--verde-600); }
+.campo select {
+  width: 100%;
+  padding: 14px;
+  border: 1.5px solid var(--borde);
+  border-radius: 14px;
+  background: var(--superficie-2);
+  font-size: 1rem;
+}
+.campo input:focus, .campo textarea:focus, .campo select:focus { outline: none; border-color: var(--verde-600); }
+.campo input[readonly] { color: var(--texto-2); }
 .campo input[aria-invalid='true'] { border-color: var(--rojo); }
 .error { color: var(--rojo); font-weight: 600; }
 .contador { align-self: flex-end; color: var(--texto-3); }
@@ -346,6 +351,12 @@ button { cursor: pointer; }
 .registro-hero em { font-style: normal; color: var(--lima); }
 .registro-hero svg rect { fill: var(--verde-900); }
 .registro-form { gap: 18px; box-shadow: var(--sombra-2); }
+.titulo-formulario { font-size: 1.2rem; font-weight: 800; }
+.texto-formulario, .texto-secundario { color: var(--texto-2); font-size: 0.84rem; }
+.mensaje-formulario { padding: 10px 12px; border-radius: 12px; font-size: 0.85rem; }
+.aviso-formulario { color: var(--verde-700); font-size: 0.85rem; font-weight: 600; }
+.mensaje-formulario.aviso-formulario { background: var(--verde-100); }
+.acciones-formulario { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .opciones-barrio { display: flex; flex-direction: column; gap: 8px; }
 .opcion-barrio {
   display: flex;

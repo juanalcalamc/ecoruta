@@ -1,4 +1,4 @@
-import { useEcoRuta } from '../context/EcoRutaContext';
+import { useEcoRuta } from '../context/useEcoRuta';
 import MapaBarrio from '../components/MapaBarrio';
 import Icono from '../components/Icono';
 import { Semaforo } from '../components/TarjetaEstado';
@@ -6,7 +6,7 @@ import { DIST_CASA, RUTA } from '../data/mapaBarrio';
 import { useRecorrido } from '../hooks/useRecorrido';
 
 export default function Mapa() {
-  const { simulando, iniciarSimulacionRecorrido, estadoRecoleccion, reportes } = useEcoRuta();
+  const { simulando, iniciarSimulacionRecorrido, estadoRecoleccion, reportes, barrioActual, ciudadActual } = useEcoRuta();
   const { porcentajeRuta, distanciaTexto, detenido } = useRecorrido();
   const posCasa = (DIST_CASA / RUTA.largo) * 100;
 
@@ -17,7 +17,11 @@ export default function Mapa() {
           <Semaforo codigo={estadoRecoleccion.codigo} />
           <div>
             <strong>{estadoRecoleccion.titulo}</strong>
-            <small>{simulando ? (detenido ? 'Recogiendo bolsas…' : 'Camión en movimiento') : 'Microrruta Villa Esperanza · Cra 10 a Cra 16'}</small>
+            <small>
+              {simulando
+                ? (detenido ? 'Recogiendo bolsas…' : 'Camión en movimiento')
+                : `Ruta de demostración · ${barrioActual.nombre}, ${ciudadActual.nombre}`}
+            </small>
           </div>
         </div>
         <MapaBarrio reportes={reportes} />

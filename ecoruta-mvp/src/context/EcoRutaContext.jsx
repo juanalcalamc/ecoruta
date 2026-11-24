@@ -1,20 +1,33 @@
-import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { EcoRutaContext } from './ecoRutaContext';
 import {
-  BARRIOS_DATA,
-  guardarPerfilLocal,
-  obtenerPerfilLocal,
-  cerrarPerfilLocal,
+  actualizarPerfilUsuario,
   calcularEstadoRecoleccion,
+  listarBarrios,
+  listarCiudades,
   listarReportes,
   crearNuevoReporte,
   archivoABase64,
+  obtenerPerfilUsuario,
 } from '../services/ecoRutaBackend';
-
-const EcoRutaContext = createContext(null);
+import {
+  cerrarSesionAuth,
+  iniciarSesion as iniciarSesionAuth,
+  reenviarCodigoCorreo,
+  registrarCuenta,
+  verificarCodigoCorreo,
+} from '../services/authService';
+import { isCloudEnabled, supabase } from '../config/supabaseClient';
 
 export function EcoRutaProvider({ children }) {
-  const [usuario, setUsuario] = useState(() => obtenerPerfilLocal());
-  const [barrioId, setBarrioId] = useState(() => obtenerPerfilLocal()?.barrioId || BARRIOS_DATA[0].id);
+  const [sesion, setSesion] = useState(null);
+  const [perfilEstado, setPerfilEstado] = useState({ usuarioId: null, datos: null, error: '' });
+  const [ciudades, setCiudades] = useState([]);
+  const [barrios, setBarrios] = useState([]);
+  const [errorAuth, setErrorAuth] = useState('');
+  const [errorCatalogo, setErrorCatalogo] = useState('');
+  const [cargandoSesion, setCargandoSesion] = useState(isCloudEnabled);
+  const [cargandoCatalogo, setCargandoCatalogo] = useState(isCloudEnabled);
   const [modoHora, setModoHora] = useState('45_antes');
   const [cambioHorario, setCambioHorario] = useState(false);
 
@@ -30,32 +43,132 @@ export function EcoRutaProvider({ children }) {
     avisoCambioHorario: true,
   });
   const [notificaciones, setNotificaciones] = useState([]);
-  const [reportes, setReportes] = useState([]);
+  const [reportesEstado, setReportesEstado] = useState({ barrioId: null, datos: [], error: '' });
 
-  const barrioActual = BARRIOS_DATA.find((b) => b.id === barrioId) || BARRIOS_DATA[0];
+  const usuarioId = sesion?.user?.id || null;
+  const usuario = perfilEstado.usuarioId === usuarioId ? perfilEstado.datos : null;
+  const errorPerfil = perfilEstado.usuarioId === usuarioId ? perfilEstado.error : '';
+  const cargandoPerfil = Boolean(usuarioId && perfilEstado.usuarioId !== usuarioId);
+  const barrioActual = usuario?.barrio || null;
+  const ciudadActual = usuario?.ciudad || null;
+  const reportes = reportesEstado.barrioId === barrioActual?.id ? reportesEstado.datos : [];
+  const errorReportes = reportesEstado.barrioId === barrioActual?.id ? reportesEstado.error : '';
   const estadoRecoleccion = calcularEstadoRecoleccion(modoHora, cambioHorario);
 
   useEffect(() => {
-    listarReportes(barrioId).then(setReportes);
-  }, [barrioId]);
+    if (!isCloudEnabled) return undefined;
 
-  const registrarUsuario = (nombre, selectedBarrioId) => {
-    const perfil = guardarPerfilLocal(nombre, selectedBarrioId);
-    setUsuario(perfil);
-    setBarrioId(selectedBarrioId);
+    let activo = true;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_evento, nuevaSesion) => {
+      setSesion(nuevaSesion);
+      setErrorAuth('');
+    });
+
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!activo) return;
+      if (error) setErrorAuth(error.message);
+      setSesion(data.session);
+      setCargandoSesion(false);
+    }).catch((error) => {
+      if (!activo) return;
+      setErrorAuth(error.message);
+      setCargandoSesion(false);
+    });
+
+    return () => {
+      activo = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isCloudEnabled) return undefined;
+
+    let activo = true;
+    Promise.all([listarCiudades(), listarBarrios()])
+      .then(([ciudadesData, barriosData]) => {
+        if (!activo) return;
+        setCiudades(ciudadesData);
+        setBarrios(barriosData);
+        setErrorCatalogo('');
+      })
+      .catch((error) => {
+        if (activo) setErrorCatalogo(error.message);
+      })
+      .finally(() => {
+        if (activo) setCargandoCatalogo(false);
+      });
+
+    return () => { activo = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!sesion?.user) return undefined;
+
+    let activo = true;
+    obtenerPerfilUsuario(sesion.user)
+      .then((perfil) => {
+        if (!activo) return;
+        setPerfilEstado({ usuarioId: sesion.user.id, datos: perfil, error: '' });
+      })
+      .catch((error) => {
+        if (activo) {
+          setPerfilEstado({
+            usuarioId: sesion.user.id,
+            datos: null,
+            error: `No se pudo cargar tu perfil: ${error.message}`,
+          });
+        }
+      });
+
+    return () => { activo = false; };
+  }, [sesion]);
+
+  useEffect(() => {
+    if (!barrioActual?.id) return undefined;
+
+    let activo = true;
+    listarReportes(barrioActual.id)
+      .then((datos) => {
+        if (activo) setReportesEstado({ barrioId: barrioActual.id, datos, error: '' });
+      })
+      .catch((error) => {
+        if (activo) setReportesEstado({ barrioId: barrioActual.id, datos: [], error: error.message });
+      });
+
+    return () => { activo = false; };
+  }, [barrioActual?.id]);
+
+  const registrarUsuario = async (datos) => {
+    setErrorAuth('');
+    return registrarCuenta(datos);
   };
 
-  const salir = () => {
-    cerrarPerfilLocal();
-    setUsuario(null);
+  const iniciarSesion = async (email, password) => {
+    setErrorAuth('');
+    return iniciarSesionAuth(email, password);
   };
 
-  const cambiarBarrio = (nuevoBarrioId) => {
-    setBarrioId(nuevoBarrioId);
-    if (usuario) {
-      const actualizado = guardarPerfilLocal(usuario.nombre, nuevoBarrioId);
-      setUsuario(actualizado);
-    }
+  const verificarCodigo = async (email, codigo) => {
+    setErrorAuth('');
+    return verificarCodigoCorreo(email, codigo);
+  };
+
+  const reenviarCodigo = async (email) => {
+    setErrorAuth('');
+    return reenviarCodigoCorreo(email);
+  };
+
+  const salir = async () => {
+    setErrorAuth('');
+    await cerrarSesionAuth();
+  };
+
+  const actualizarPerfil = async (datos) => {
+    if (!sesion?.user) throw new Error('Tu sesión expiró. Inicia sesión de nuevo.');
+    const actualizado = await actualizarPerfilUsuario({ ...datos, usuarioId: sesion.user.id });
+    setPerfilEstado({ usuarioId: sesion.user.id, datos: actualizado, error: '' });
+    return actualizado;
   };
 
   const dispararNotificacion = (titulo, mensaje, tipo = 'info') => {
@@ -99,14 +212,15 @@ export function EcoRutaProvider({ children }) {
     const nuevoEstado = !cambioHorario;
     setCambioHorario(nuevoEstado);
     if (nuevoEstado && preferenciasAlertas.avisoCambioHorario) {
-      dispararNotificacion('Aviso de cambio de horario', `La ruta en ${barrioActual.nombre} tendrá un retraso de 45 minutos hoy.`, 'warning');
+      dispararNotificacion('Aviso de cambio de horario', `La ruta en ${barrioActual?.nombre || 'tu barrio'} tendrá un retraso de 45 minutos hoy.`, 'warning');
     }
   };
 
   const enviarReporte = async ({ tipo, descripcion, coordX, coordY, archivoFoto }) => {
+    if (!barrioActual?.id) throw new Error('Tu perfil no tiene un barrio configurado.');
     const fotoBase64 = await archivoABase64(archivoFoto);
     const creado = await crearNuevoReporte({
-      barrioId,
+      barrioId: barrioActual.id,
       usuario: usuario?.nombre || 'Habitante',
       tipo,
       descripcion,
@@ -114,11 +228,19 @@ export function EcoRutaProvider({ children }) {
       coordY,
       fotoBase64,
     });
-    setReportes((prev) => [creado, ...prev]);
+    setReportesEstado((prev) => ({
+      barrioId: barrioActual.id,
+      datos: [creado, ...(prev.barrioId === barrioActual.id ? prev.datos : [])],
+      error: '',
+    }));
 
     // Avance automático de estado para demostración (Tabla 8)[cite: 28]
     setTimeout(() => {
-      setReportes((prev) => prev.map((r) => (r.id === creado.id ? { ...r, estado: 'En revisión' } : r)));
+      setReportesEstado((prev) => (
+        prev.barrioId === barrioActual.id
+          ? { ...prev, datos: prev.datos.map((r) => (r.id === creado.id ? { ...r, estado: 'En revisión' } : r)) }
+          : prev
+      ));
     }, 8000);
 
     return creado;
@@ -127,9 +249,11 @@ export function EcoRutaProvider({ children }) {
   return (
     <EcoRutaContext.Provider
       value={{
-        barrios: BARRIOS_DATA,
+        ciudades,
+        barrios,
         usuario,
         barrioActual,
+        ciudadActual,
         estadoRecoleccion,
         modoHora,
         setModoHora,
@@ -139,9 +263,18 @@ export function EcoRutaProvider({ children }) {
         setPreferenciasAlertas,
         notificaciones,
         reportes,
+        errorReportes,
+        cargandoUsuario: cargandoSesion || cargandoPerfil,
+        sesionActiva: Boolean(sesion?.user),
+        cargandoCatalogo,
+        errorAuth: errorAuth || errorPerfil,
+        errorCatalogo,
         registrarUsuario,
+        iniciarSesion,
+        verificarCodigo,
+        reenviarCodigo,
+        actualizarPerfil,
         salir,
-        cambiarBarrio,
         iniciarSimulacionRecorrido,
         simularCambioDeHorario,
         enviarReporte,
@@ -151,5 +284,3 @@ export function EcoRutaProvider({ children }) {
     </EcoRutaContext.Provider>
   );
 }
-
-export const useEcoRuta = () => useContext(EcoRutaContext);

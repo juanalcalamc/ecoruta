@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useEcoRuta } from './context/EcoRutaContext';
+import { useEcoRuta } from './context/useEcoRuta';
 import { useHashRoute } from './hooks/useHashRoute';
 import { useAvisosApp } from './hooks/useAvisosApp';
 import { Avisos, BarraPestanas, Encabezado } from './components/Estructura';
@@ -9,10 +9,11 @@ import Mapa from './pages/Mapa';
 import Alertas from './pages/Alertas';
 import Reportar from './pages/Reportar';
 import Reportes from './pages/Reportes';
+import Configuracion from './pages/Configuracion';
 import './index.css';
 
-const PAGINAS = { inicio: Inicio, mapa: Mapa, alertas: Alertas, reportar: Reportar, reportes: Reportes };
-const TITULOS = { inicio: 'Inicio', mapa: 'Mapa en ruta', alertas: 'Alertas', reportar: 'Reportar punto crítico', reportes: 'Mis reportes' };
+const PAGINAS = { inicio: Inicio, mapa: Mapa, alertas: Alertas, reportar: Reportar, reportes: Reportes, configuracion: Configuracion };
+const TITULOS = { inicio: 'Inicio', mapa: 'Mapa en ruta', alertas: 'Alertas', reportar: 'Reportar punto crítico', reportes: 'Mis reportes', configuracion: 'Configuración' };
 
 /**
  * El contexto pasa a «Saca tus residuos ahora» al 85 % de la simulación; si ese paso
@@ -26,10 +27,20 @@ function useSemaforoEnVivo() {
 }
 
 export default function App() {
-  const { usuario } = useEcoRuta();
+  const { usuario, cargandoUsuario } = useEcoRuta();
   const ruta = useHashRoute();
   const avisos = useAvisosApp();
   useSemaforoEnVivo();
+
+  if (cargandoUsuario) {
+    return (
+      <div className="marco">
+        <main className="registro">
+          <p role="status">Comprobando tu sesión…</p>
+        </main>
+      </div>
+    );
+  }
 
   if (!usuario) {
     return (

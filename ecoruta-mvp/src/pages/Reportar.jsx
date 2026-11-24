@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useEcoRuta } from '../context/EcoRutaContext';
+import { useEcoRuta } from '../context/useEcoRuta';
 import MapaBarrio from '../components/MapaBarrio';
 import Icono from '../components/Icono';
 import { navegar } from '../hooks/useHashRoute';

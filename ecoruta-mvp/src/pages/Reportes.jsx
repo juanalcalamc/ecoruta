@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useEcoRuta } from '../context/EcoRutaContext';
+import { useEcoRuta } from '../context/useEcoRuta';
 import Icono from '../components/Icono';
 import { navegar } from '../hooks/useHashRoute';
 
@@ -30,12 +30,13 @@ function LineaEstado({ estado }) {
 }
 
 export default function Reportes() {
-  const { reportes } = useEcoRuta();
+  const { reportes, errorReportes } = useEcoRuta();
   const [filtro, setFiltro] = useState('Todos');
   const visibles = filtro === 'Todos' ? reportes : reportes.filter((r) => r.estado === filtro);
 
   return (
     <div className="pagina">
+      {errorReportes && <p className="mensaje-formulario error" role="alert">No se pudieron cargar los reportes: {errorReportes}</p>}
       <div className="chips chips--filtro">
         {FILTROS.map((f) => (
           <button key={f} className={`chip-opcion ${filtro === f ? 'activo' : ''}`} onClick={() => setFiltro(f)}>
@@ -44,7 +45,7 @@ export default function Reportes() {
         ))}
       </div>
 
-      {visibles.length === 0 ? (
+      {!errorReportes && visibles.length === 0 ? (
         <section className="tarjeta vacio">
           <p>No hay reportes {filtro !== 'Todos' && `en estado «${filtro}»`}.</p>
           <button className="boton boton--primario" onClick={() => navegar('reportar')}>Hacer un reporte</button>

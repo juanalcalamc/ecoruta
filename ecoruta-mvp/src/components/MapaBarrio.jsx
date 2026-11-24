@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef } from 'react';
-import { useEcoRuta } from '../context/EcoRutaContext';
+import { useEcoRuta } from '../context/useEcoRuta';
 import {
   ANCHO_CALLE,
   CALLES,

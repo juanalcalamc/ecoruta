@@ -1,0 +1,142 @@
+.mapa {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: var(--radio-l);
+  background: var(--mapa-calle);
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.mapa--compacto {
+  aspect-ratio: 16 / 9;
+}
+
+.mapa--seleccion {
+  cursor: crosshair;
+}
+
+.mapa-calles { fill: var(--mapa-calle); }
+.mapa-manzana { fill: var(--mapa-manzana); }
+.mapa-parque { fill: var(--mapa-parque); }
+.mapa-arbol { fill: var(--mapa-arbol); }
+
+.mapa-nombres text {
+  font-size: 7.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  fill: var(--texto-3);
+  text-transform: uppercase;
+}
+
+.mapa-nombres .mapa-nombre-parque {
+  fill: var(--verde-700);
+  font-size: 9px;
+}
+
+.ruta-pendiente {
+  fill: none;
+  stroke: var(--verde-600);
+  stroke-opacity: 0.35;
+  stroke-width: 3.5;
+  stroke-dasharray: 2 7;
+  stroke-linecap: round;
+}
+
+.ruta-recorrida {
+  fill: none;
+  stroke: var(--verde-600);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+}
+
+.geocerca {
+  fill: var(--ambar);
+  fill-opacity: 0.06;
+  stroke: var(--ambar);
+  stroke-opacity: 0.5;
+  stroke-width: 1.2;
+  stroke-dasharray: 4 4;
+  transition: fill-opacity 0.4s, stroke-opacity 0.4s;
+}
+
+.geocerca.activa {
+  fill: var(--exito);
+  fill-opacity: 0.16;
+  stroke: var(--exito);
+  stroke-opacity: 0.9;
+  animation: girar 6s linear infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.bolsas {
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.bolsas.recogida {
+  opacity: 0;
+}
+
+.bolsa { stroke: rgba(0, 0, 0, 0.25); stroke-width: 0.6; }
+.bolsa--negra { fill: #2a2f2c; }
+.bolsa--blanca { fill: #f7f7f4; }
+
+.casa-pulso {
+  fill: var(--verde-600);
+  opacity: 0.18;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pulso 2.2s ease-out infinite;
+}
+
+.casa-fondo { fill: var(--verde-600); stroke: #fff; stroke-width: 2; }
+.casa-icono { fill: #fff; }
+.casa-texto { font-size: 8px; font-weight: 700; fill: var(--verde-700); }
+
+.pin-reporte { filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.3)); }
+.pin-reporte circle { stroke: #fff; stroke-width: 1.5; }
+.pin-reporte text { font-size: 8px; font-weight: 800; fill: #fff; }
+
+.pin-seleccion path { fill: var(--rojo); stroke: #fff; stroke-width: 1.5; }
+.pin-seleccion circle { fill: #fff; }
+.pin-seleccion {
+  animation: caer 0.35s var(--ease);
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.3));
+}
+
+.camion-sombra { fill: #000; opacity: 0.18; }
+.camion-caja { fill: var(--verde-600); stroke: var(--verde-900); stroke-width: 1; }
+.camion-rayas { stroke: #fff; stroke-opacity: 0.35; stroke-width: 1; }
+.camion-cabina { fill: #f3f5f0; stroke: var(--verde-900); stroke-width: 1; }
+.camion-vidrio { fill: #22333b; }
+.camion-baliza { fill: var(--ambar); animation: baliza 0.8s steps(2, jump-none) infinite; }
+.camion.detenido .camion-baliza { animation-duration: 0.35s; }
+
+.burbuja rect { fill: var(--texto); }
+.burbuja text { font-size: 9px; font-weight: 700; fill: var(--superficie); }
+
+@keyframes pulso {
+  from { transform: scale(0.8); opacity: 0.35; }
+  to { transform: scale(2.1); opacity: 0; }
+}
+
+@keyframes baliza {
+  50% { fill: #ff7a00; opacity: 0.4; }
+}
+
+@keyframes girar {
+  to { stroke-dashoffset: -40; }
+}
+
+@keyframes caer {
+  from { transform: translateY(-12px); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .casa-pulso, .camion-baliza, .geocerca.activa { animation: none; }
+}
